@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maths Game</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    overflow: hidden;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    position: relative;
+    transition: background 0.5s ease; /* smooth background change */
+  }
+
+  /* Top-left logo / name (no blinking) */
+  .logo {
+    position: fixed;
+    top: 10px;
+    left: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #3b82f6;
+    z-index: 10;
+  }
+
+  @media (min-width: 600px) {
+    .logo { font-size: 22px; }
+  }
+
+  /* Floating math numbers & symbols */
+  .math-bg {
+    position: absolute;
+    color: rgba(255,255,255,0.1);
+    font-weight: bold;
+    animation: floatBG linear infinite;
+  }
+  @keyframes floatBG {
+    0% { transform: translateY(100vh) translateX(0) rotate(0deg); }
+    100% { transform: translateY(-50px) translateX(0) rotate(360deg); }
+  }
+
+  /* Game Box */
+  .game-box {
+    position: relative;
+    background: rgba(30, 41, 59, 0.95);
+    padding: 30px 20px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    z-index: 1;
+  }
+
+  .question {
+    font-size: 6vw;
+    margin-bottom: 15px;
+    word-break: break-word;
+  }
+
+  input {
+    width: 90%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-size: 5vw;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+
+  button {
+    background: #3b82f6;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 4.5vw;
+    cursor: pointer;
+    margin: 5px;
+  }
+
+  button:hover { background: #2563eb; }
+
+  .score, .timer { margin-top: 12px; font-size: 5vw; }
+  .feedback { font-size: 5.5vw; margin-top: 12px; min-height: 6vw; }
+  .counters { margin-top: 12px; font-size: 4.5vw; text-align: left; }
+
+  @media (min-width: 600px) {
+    .question { font-size: 32px; }
+    input { font-size: 22px; }
+    button { font-size: 18px; padding: 12px 25px; }
+    .score, .timer { font-size: 22px; }
+    .feedback { font-size: 26px; }
+    .counters { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="logo">Naresh Badugu</div>
+
+<div class="game-box">
+  <h2>Maths Game</h2>
+  <div class="question" id="question">Loading...</div>
+  <input type="number" id="answer" placeholder="Enter your answer">
+  <div>
+    <button onclick="checkAnswer()">Submit</button>
+    <button onclick="skipQuestion()">Skip</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+  <div class="score" id="score">Score: 0</div>
+  <div class="timer" id="timer">Time: 60s</div>
+  <div class="counters">
+    ✅ Correct: <span id="correctCount">0</span><br>
+    ❌ Wrong: <span id="wrongCount">0</span><br>
+    ⏩ Skipped: <span id="skippedCount">0</span>
+  </div>
+</div>
+
+<script>
+  // ===== Background math numbers & symbols =====
+  const mathChars = ["1","2","3","4","5","6","7","8","9","0","+","-","*","/","%","="];
+  for(let i=0;i<50;i++){
+    const bgChar = document.createElement('div');
+    bgChar.classList.add('math-bg');
+    bgChar.innerText = mathChars[Math.floor(Math.random()*mathChars.length)];
+    bgChar.style.left = Math.random() * window.innerWidth + 'px';
+    bgChar.style.fontSize = (16 + Math.random()*24) + 'px';
+    bgChar.style.animationDuration = (8 + Math.random()*12) + 's';
+    bgChar.style.animationDelay = Math.random()*10 + 's';
+    document.body.appendChild(bgChar);
+  }
+
+  // ===== Game Logic =====
+  let num1, num2, correctAnswer;
+  let score = 0, correctCount = 0, wrongCount = 0, skippedCount = 0;
+  let timeLeft = 60, timerInterval;
+
+  // Array of background colors
+  const bgColors = ["#0f172a","#1e293b","#111827","#1f2937","#111f27","#161b2b"];
+
+  function generateQuestion() {
+    // Change background color randomly
+    document.body.style.background = bgColors[Math.floor(Math.random()*bgColors.length)];
+
+    num1 = Math.floor(Math.random() * 20);
+    num2 = Math.floor(Math.random() * 20);
+    const operators = ["+", "-", "*"];
+    const op = operators[Math.floor(Math.random() * operators.length)];
+    if(op === "+") correctAnswer = num1 + num2;
+    if(op === "-") correctAnswer = num1 - num2;
+    if(op === "*") correctAnswer = num1 * num2;
+    document.getElementById("question").innerText = `${num1} ${op} ${num2} = ?`;
+    resetTimer();
+  }
+
+  function checkAnswer() {
+    const answerInput = document.getElementById("answer");
+    let userAns = Number(answerInput.value);
+    const feedback = document.getElementById("feedback");
+
+    if(answerInput.value.trim() === "" || isNaN(userAns)){
+      feedback.innerText = "⚠ Enter a valid number!";
+      feedback.style.color = "orange";
+      return;
+    }
+
+    if (userAns === correctAnswer) {
+      score++; correctCount++;
+      feedback.innerText = "✅ Correct!";
+      feedback.style.color = "lime";
+    } else {
+      wrongCount++;
+      feedback.innerText = `❌ Wrong! Correct: ${correctAnswer}`;
+      feedback.style.color = "red";
+    }
+
+    updateCounters();
+    answerInput.value = "";
+    generateQuestion();
+  }
+
+  function skipQuestion() {
+    skippedCount++;
+    const feedback = document.getElementById("feedback");
+    feedback.innerText = `⏩ Skipped! Correct: ${correctAnswer}`;
+    feedback.style.color = "cyan";
+    document.getElementById("answer").value = "";
+    updateCounters();
+    generateQuestion();
+  }
+
+  function updateCounters() {
+    document.getElementById("score").innerText = "Score: " + score;
+    document.getElementById("correctCount").innerText = correctCount;
+    document.getElementById("wrongCount").innerText = wrongCount;
+    document.getElementById("skippedCount").innerText = skippedCount;
+  }
+
+  // ===== Timer =====
+  function resetTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 60;
+    document.getElementById("timer").innerText = "Time: 60s";
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById("timer").innerText = "Time: " + timeLeft + "s";
+      if(timeLeft <= 0){
+        clearInterval(timerInterval);
+        const feedback = document.getElementById("feedback");
+        feedback.innerText = `⏰ Time's up! Correct: ${correctAnswer}`;
+        feedback.style.color = "yellow";
+        document.getElementById("answer").value = "";
+        generateQuestion();
+      }
+    }, 1000);
+  }
+
+  // Start game
+  generateQuestion();
+
+  // Enter key support
+  document.getElementById("answer").addEventListener("keyup", function(event){
+    if(event.key === "Enter"){
+      checkAnswer();
+    }
+  });
+</script>
+
+</body>
+</html>
